@@ -1,21 +1,25 @@
 "use client";
 
 import Link from "next/link";
+import { Badge } from "@openai/apps-sdk-ui/components/Badge";
+import { ButtonLink } from "@openai/apps-sdk-ui/components/Button";
 
 export default function HomePage() {
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <h1 className="text-4xl font-black tracking-tight">Welcome</h1>
-        <p className="font-mono text-sm/6 text-center sm:text-left tracking-[-.01em] max-w-xl">
-          This is a client-side rendered page demonstrating navigation in your ChatGPT app.
+    <div className="min-h-screen bg-[var(--color-surface)] px-4 py-8 text-[var(--color-text)] sm:px-6">
+      <main className="mx-auto flex max-w-3xl flex-col gap-5">
+        <Badge color="info" pill>
+          Route example
+        </Badge>
+        <h1 className="text-3xl font-semibold tracking-normal">Navigation works</h1>
+        <p className="max-w-xl text-sm leading-6 text-[var(--color-text-secondary)]">
+          This page demonstrates client-side navigation inside the ChatGPT app
+          iframe. The layout bootstrap rewrites same-origin fetches so Next.js
+          assets and RSC payloads continue to load from your app origin.
         </p>
-        <Link 
-          href="/"
-          className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-        >
+        <ButtonLink color="primary" as={Link} href="/">
           Go to the main page
-        </Link>
+        </ButtonLink>
       </main>
     </div>
   );
