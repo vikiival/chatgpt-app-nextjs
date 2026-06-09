@@ -48,7 +48,7 @@ function NextChatSDKBootstrap({ baseUrl }: { baseUrl: string }) {
       <script>
         {"(" +
           (() => {
-            const baseUrl = window.innerBaseUrl || window.location.origin;
+            const baseUrl = window.innerBaseUrl;
             const htmlElement = document.documentElement;
             const observer = new MutationObserver((mutations) => {
               mutations.forEach((mutation) => {

@@ -1,5 +1,5 @@
 import { baseURL } from "@/baseUrl";
-import { createMcpHandler, getPublicOrigin } from "mcp-handler";
+import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
 
 const getAppsSdkCompatibleHtml = async (baseUrl: string, path: string) => {
@@ -9,20 +9,6 @@ const getAppsSdkCompatibleHtml = async (baseUrl: string, path: string) => {
   }
   return await result.text();
 };
-
-function normalizeWidgetHtml(html: string, publicOrigin: string) {
-  return html
-    .replaceAll("https://undefined", publicOrigin)
-    .replaceAll("http://undefined", publicOrigin)
-    .replaceAll('href="/_next/', `href="${publicOrigin}/_next/`)
-    .replaceAll('src="/_next/', `src="${publicOrigin}/_next/`)
-    .replaceAll('href="/favicon', `href="${publicOrigin}/favicon`)
-    .replace(/<base href="[^"]*"\s*\/?>/, `<base href="${publicOrigin}">`)
-    .replace(
-      /window\.innerBaseUrl = "[^"]*"/,
-      `window.innerBaseUrl = ${JSON.stringify(publicOrigin)}`
-    );
-}
 
 type WidgetDefinition = {
   id: string;
@@ -48,21 +34,21 @@ function toolMeta(widget: WidgetDefinition) {
   } as const;
 }
 
-function resourceMeta(widget: WidgetDefinition, publicOrigin: string) {
+function resourceMeta(widget: WidgetDefinition) {
   return {
     "ui/description": widget.description,
     "ui/prefersBorder": widget.prefersBorder ?? false,
-    "ui/domain": publicOrigin,
+    "ui/domain": baseURL,
     "ui/csp": {
-      connect_domains: [publicOrigin, publicOrigin.replace(/^http/, "ws")],
-      resource_domains: [publicOrigin, "https://*.oaistatic.com"],
+      connect_domains: [baseURL, baseURL.replace(/^http/, "ws")],
+      resource_domains: [baseURL, "https://*.oaistatic.com"],
     },
     "openai/widgetDescription": widget.description,
     "openai/widgetPrefersBorder": widget.prefersBorder ?? false,
-    "openai/widgetDomain": publicOrigin,
+    "openai/widgetDomain": baseURL,
     "openai/widgetCSP": {
-      connect_domains: [publicOrigin, publicOrigin.replace(/^http/, "ws")],
-      resource_domains: [publicOrigin, "https://*.oaistatic.com"],
+      connect_domains: [baseURL, baseURL.replace(/^http/, "ws")],
+      resource_domains: [baseURL, "https://*.oaistatic.com"],
     },
   } as const;
 }
@@ -80,10 +66,7 @@ const sampleWidget: WidgetDefinition = {
   widgetAccessible: true,
 };
 
-function createHandler(publicOrigin: string) {
-  const appOrigin = baseURL || publicOrigin;
-
-  return createMcpHandler(async (server) => {
+const handler = createMcpHandler(async (server) => {
   server.registerResource(
     sampleWidget.id,
     sampleWidget.templateUri,
@@ -91,18 +74,18 @@ function createHandler(publicOrigin: string) {
       title: sampleWidget.title,
       description: sampleWidget.description,
       mimeType: "text/html+skybridge",
-      _meta: resourceMeta(sampleWidget, publicOrigin),
+      _meta: resourceMeta(sampleWidget),
     },
     async (uri) => {
-      const html = await getAppsSdkCompatibleHtml(appOrigin, sampleWidget.path);
+      const html = await getAppsSdkCompatibleHtml(baseURL, sampleWidget.path);
 
       return {
         contents: [
           {
             uri: uri.href,
             mimeType: "text/html+skybridge",
-            text: normalizeWidgetHtml(html, publicOrigin),
-            _meta: resourceMeta(sampleWidget, publicOrigin),
+            text: html,
+            _meta: resourceMeta(sampleWidget),
           },
         ],
       };
@@ -194,13 +177,7 @@ function createHandler(publicOrigin: string) {
       };
     }
   );
-  });
-}
+});
 
-function handleRequest(request: Request) {
-  const publicOrigin = baseURL || getPublicOrigin(request);
-  return createHandler(publicOrigin)(request);
-}
-
-export const GET = handleRequest;
-export const POST = handleRequest;
+export const GET = handler;
+export const POST = handler;
