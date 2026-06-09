@@ -13,7 +13,17 @@ type JsonRpcResponse<T> = {
   };
 };
 
-type BridgeMethod = "tools/call" | "ui/message" | "ui/update-model-context";
+type TextContentBlock = {
+  type: "text";
+  text: string;
+};
+
+type BridgeMethod =
+  | "tools/call"
+  | "ui/message"
+  | "ui/open-link"
+  | "ui/request-display-mode"
+  | "ui/update-model-context";
 
 function postBridgeRequest<T>(
   method: BridgeMethod,
@@ -60,15 +70,41 @@ export function useMcpBridge() {
   );
 
   const sendMessage = useCallback(
-    (message: string) => postBridgeRequest<void>("ui/message", { message }),
+    (message: string) =>
+      postBridgeRequest<void>("ui/message", {
+        role: "user",
+        content: { type: "text", text: message },
+      }),
     []
   );
 
   const updateModelContext = useCallback(
     (context: string) =>
-      postBridgeRequest<void>("ui/update-model-context", { context }),
+      postBridgeRequest<void>("ui/update-model-context", {
+        content: [{ type: "text", text: context } satisfies TextContentBlock],
+      }),
     []
   );
 
-  return { callTool, sendMessage, updateModelContext };
+  const openLink = useCallback(
+    (url: string) => postBridgeRequest<void>("ui/open-link", { url }),
+    []
+  );
+
+  const requestDisplayMode = useCallback(
+    (mode: "inline" | "fullscreen" | "pip") =>
+      postBridgeRequest<{ mode: "inline" | "fullscreen" | "pip" }>(
+        "ui/request-display-mode",
+        { mode }
+      ),
+    []
+  );
+
+  return {
+    callTool,
+    sendMessage,
+    openLink,
+    requestDisplayMode,
+    updateModelContext,
+  };
 }

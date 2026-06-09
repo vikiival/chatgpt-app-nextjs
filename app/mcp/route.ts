@@ -2,6 +2,9 @@ import { baseURL } from "@/baseUrl";
 import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
 
+const MCP_APPS_MIME_TYPE = "text/html;profile=mcp-app";
+const CHATGPT_APPS_MIME_TYPE = "text/html+skybridge";
+
 const getAppsSdkCompatibleHtml = async (baseUrl: string, path: string) => {
   const result = await fetch(`${baseUrl}${path}`);
   if (!result.ok) {
@@ -14,6 +17,7 @@ type WidgetDefinition = {
   id: string;
   title: string;
   templateUri: string;
+  chatGptTemplateUri: string;
   path: string;
   invoking: string;
   invoked: string;
@@ -24,9 +28,12 @@ type WidgetDefinition = {
 
 function toolMeta(widget: WidgetDefinition) {
   return {
+    ui: {
+      resourceUri: widget.templateUri,
+      visibility: ["model", "app"],
+    },
     "ui/resourceUri": widget.templateUri,
-    "ui/visibility": "visible",
-    "openai/outputTemplate": widget.templateUri,
+    "openai/outputTemplate": widget.chatGptTemplateUri,
     "openai/toolInvocation/invoking": widget.invoking,
     "openai/toolInvocation/invoked": widget.invoked,
     "openai/widgetAccessible": widget.widgetAccessible ?? true,
@@ -36,12 +43,14 @@ function toolMeta(widget: WidgetDefinition) {
 
 function resourceMeta(widget: WidgetDefinition) {
   return {
-    "ui/description": widget.description,
-    "ui/prefersBorder": widget.prefersBorder ?? false,
-    "ui/domain": baseURL,
-    "ui/csp": {
-      connect_domains: [baseURL, baseURL.replace(/^http/, "ws")],
-      resource_domains: [baseURL, "https://*.oaistatic.com"],
+    ui: {
+      csp: {
+        connectDomains: [baseURL, baseURL.replace(/^http/, "ws")],
+        resourceDomains: [baseURL, "https://*.oaistatic.com"],
+        baseUriDomains: [baseURL],
+      },
+      domain: baseURL,
+      prefersBorder: widget.prefersBorder ?? false,
     },
     "openai/widgetDescription": widget.description,
     "openai/widgetPrefersBorder": widget.prefersBorder ?? false,
@@ -57,6 +66,7 @@ const sampleWidget: WidgetDefinition = {
   id: "starter-widget",
   title: "Apps SDK Starter Widget",
   templateUri: "ui://widget/starter-widget.html",
+  chatGptTemplateUri: "ui://widget/starter-widget.skybridge.html",
   path: "/",
   invoking: "Preparing the starter widget",
   invoked: "Starter widget ready",
@@ -73,7 +83,7 @@ const handler = createMcpHandler(async (server) => {
     {
       title: sampleWidget.title,
       description: sampleWidget.description,
-      mimeType: "text/html+skybridge",
+      mimeType: MCP_APPS_MIME_TYPE,
       _meta: resourceMeta(sampleWidget),
     },
     async (uri) => {
@@ -83,7 +93,32 @@ const handler = createMcpHandler(async (server) => {
         contents: [
           {
             uri: uri.href,
-            mimeType: "text/html+skybridge",
+            mimeType: MCP_APPS_MIME_TYPE,
+            text: html,
+            _meta: resourceMeta(sampleWidget),
+          },
+        ],
+      };
+    }
+  );
+
+  server.registerResource(
+    `${sampleWidget.id}-skybridge`,
+    sampleWidget.chatGptTemplateUri,
+    {
+      title: sampleWidget.title,
+      description: sampleWidget.description,
+      mimeType: CHATGPT_APPS_MIME_TYPE,
+      _meta: resourceMeta(sampleWidget),
+    },
+    async (uri) => {
+      const html = await getAppsSdkCompatibleHtml(baseURL, sampleWidget.path);
+
+      return {
+        contents: [
+          {
+            uri: uri.href,
+            mimeType: CHATGPT_APPS_MIME_TYPE,
             text: html,
             _meta: resourceMeta(sampleWidget),
           },

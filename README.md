@@ -7,8 +7,9 @@ This template is intentionally generic. It does not include auth, database, bill
 - A Next.js app that can render in a normal browser and inside ChatGPT.
 - An MCP endpoint at `/mcp`.
 - MCP tools that return `content`, `structuredContent`, and widget metadata.
-- Widget resources served as `text/html+skybridge` for ChatGPT Apps SDK compatibility.
-- MCP Apps style metadata plus OpenAI Apps SDK compatibility metadata.
+- Widget resources served as `text/html;profile=mcp-app` for MCP Apps hosts.
+- A parallel `text/html+skybridge` resource for ChatGPT Apps SDK compatibility.
+- MCP Apps metadata plus OpenAI Apps SDK compatibility metadata.
 - React hooks for `window.openai` host globals and actions.
 - A small JSON-RPC bridge helper for MCP Apps methods.
 - A sample widget built with `@openai/apps-sdk-ui`.
@@ -73,33 +74,56 @@ The flow is:
 5. ChatGPT fetches the widget HTML and renders it in an iframe.
 6. The React widget reads tool output, display state, and host actions through the Apps SDK bridge.
 
-## Why `text/html+skybridge`
+## MCP Apps Support
 
-Widget resources are returned with:
+MCP Apps use a two-part registration:
+
+1. A tool declares a UI resource in `_meta.ui.resourceUri`.
+2. A `ui://` resource returns HTML with the MCP Apps MIME type.
+
+The standard MCP Apps resource in this template is:
 
 ```ts
-mimeType: "text/html+skybridge"
+{
+  uri: "ui://widget/starter-widget.html",
+  mimeType: "text/html;profile=mcp-app"
+}
 ```
 
-This MIME type is used for ChatGPT Apps SDK iframe widgets. It tells ChatGPT that the resource is HTML intended to run with the Apps SDK bridge available.
-
-The template also emits newer MCP Apps style metadata such as:
+Tools point to it with nested MCP Apps metadata:
 
 ```ts
-"ui/resourceUri": "ui://widget/starter-widget.html"
-"ui/visibility": "visible"
-"ui/domain": baseURL
-"ui/csp": { ... }
+_meta: {
+  ui: {
+    resourceUri: "ui://widget/starter-widget.html",
+    visibility: ["model", "app"],
+  },
+}
 ```
 
-For ChatGPT compatibility, it also mirrors OpenAI-specific metadata:
+The template keeps the deprecated flat `ui/resourceUri` value as a migration aid, but new hosts should use `_meta.ui.resourceUri`.
+
+## ChatGPT Apps SDK Compatibility
+
+ChatGPT Apps SDK compatibility is kept through a parallel Skybridge resource:
 
 ```ts
-"openai/outputTemplate": "ui://widget/starter-widget.html"
+{
+  uri: "ui://widget/starter-widget.skybridge.html",
+  mimeType: "text/html+skybridge"
+}
+```
+
+The same tool metadata also includes OpenAI compatibility fields:
+
+```ts
+"openai/outputTemplate": "ui://widget/starter-widget.skybridge.html"
 "openai/toolInvocation/invoking": "Preparing the starter widget"
 "openai/toolInvocation/invoked": "Starter widget ready"
 "openai/widgetAccessible": true
 ```
+
+This lets MCP Apps hosts render the standards-based resource while ChatGPT Apps SDK hosts can continue using the Skybridge resource.
 
 ## Registered MCP Tools
 
@@ -244,7 +268,12 @@ This behaves like the user typed a follow-up prompt.
 The **Update context** button sends model context through the MCP Apps bridge:
 
 ```ts
-ui/update-model-context
+{
+  method: "ui/update-model-context",
+  params: {
+    content: [{ type: "text", text: "..." }]
+  }
+}
 ```
 
 The demo sends:
@@ -317,8 +346,9 @@ To add a new widget:
 1. Add a new `WidgetDefinition`.
 2. Create a Next.js page for the widget UI.
 3. Register a resource with a stable URI such as `ui://widget/orders.html`.
-4. Return `mimeType: "text/html+skybridge"`.
-5. Register one or more tools that point to that widget.
+4. Return `mimeType: "text/html;profile=mcp-app"` for MCP Apps hosts.
+5. Optionally register a parallel `text/html+skybridge` resource for ChatGPT Apps SDK compatibility.
+6. Register one or more tools that point to both resources through metadata.
 
 To add a new tool:
 
@@ -377,4 +407,4 @@ You should see `template_echo` and `template_update_preferences`.
 
 - The sample UI renders outside ChatGPT for local development.
 - Host actions such as `callTool`, `sendFollowUpMessage`, and `setWidgetState` require the ChatGPT/App host bridge.
-- The template keeps both MCP Apps metadata and OpenAI Apps SDK compatibility metadata so it can work with current ChatGPT app rendering behavior.
+- The template keeps both MCP Apps metadata and OpenAI Apps SDK compatibility metadata so it can work across standards-based MCP Apps hosts and current ChatGPT app rendering behavior.
