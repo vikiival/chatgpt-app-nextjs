@@ -109,6 +109,8 @@ Auth routes:
 /api/auth/[...all]                    Better Auth handler
 /api/auth/.well-known/oauth-authorization-server
 /api/auth/.well-known/oauth-protected-resource
+/.well-known/oauth-authorization-server  Root discovery proxy for OAuth clients
+/.well-known/oauth-protected-resource    Root discovery proxy for OAuth clients
 /api/auth/mcp/authorize
 /api/auth/mcp/token
 /api/auth/mcp/register
