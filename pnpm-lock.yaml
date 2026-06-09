@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  mcp-handler>@modelcontextprotocol/sdk: 1.29.0
+
 importers:
 
   .:
@@ -1658,7 +1661,7 @@ packages:
     resolution: {integrity: sha512-MVCES7g18gcoZy+R/3v5nadkUMzMAWdos8jRl6DyljOKvd2/ZKDmwlCjL6zp4vo+7FeCXOYL1uWinHWlkKAAUg==}
     hasBin: true
     peerDependencies:
-      '@modelcontextprotocol/sdk': 1.26.0
+      '@modelcontextprotocol/sdk': 1.29.0
       next: '>=13.0.0'
     peerDependenciesMeta:
       next:
