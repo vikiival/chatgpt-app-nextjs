@@ -2,97 +2,212 @@ import { baseURL } from "@/baseUrl";
 import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
 
+const MCP_APPS_MIME_TYPE = "text/html;profile=mcp-app";
+const CHATGPT_APPS_MIME_TYPE = "text/html+skybridge";
+
 const getAppsSdkCompatibleHtml = async (baseUrl: string, path: string) => {
   const result = await fetch(`${baseUrl}${path}`);
+  if (!result.ok) {
+    throw new Error(`Failed to fetch widget HTML for ${path}: ${result.status}`);
+  }
   return await result.text();
 };
 
-type ContentWidget = {
+type WidgetDefinition = {
   id: string;
   title: string;
   templateUri: string;
+  chatGptTemplateUri: string;
+  path: string;
   invoking: string;
   invoked: string;
-  html: string;
   description: string;
-  widgetDomain: string;
+  prefersBorder?: boolean;
+  widgetAccessible?: boolean;
 };
 
-function widgetMeta(widget: ContentWidget) {
+function toolMeta(widget: WidgetDefinition) {
   return {
-    "openai/outputTemplate": widget.templateUri,
+    ui: {
+      resourceUri: widget.templateUri,
+      visibility: ["model", "app"],
+    },
+    "ui/resourceUri": widget.templateUri,
+    "openai/outputTemplate": widget.chatGptTemplateUri,
     "openai/toolInvocation/invoking": widget.invoking,
     "openai/toolInvocation/invoked": widget.invoked,
-    "openai/widgetAccessible": false,
+    "openai/widgetAccessible": widget.widgetAccessible ?? true,
     "openai/resultCanProduceWidget": true,
   } as const;
 }
 
-const handler = createMcpHandler(async (server) => {
-  const html = await getAppsSdkCompatibleHtml(baseURL, "/");
-
-  const contentWidget: ContentWidget = {
-    id: "show_content",
-    title: "Show Content",
-    templateUri: "ui://widget/content-template.html",
-    invoking: "Loading content...",
-    invoked: "Content loaded",
-    html: html,
-    description: "Displays the homepage content",
-    widgetDomain: "https://nextjs.org/docs",
-  };
-  server.registerResource(
-    "content-widget",
-    contentWidget.templateUri,
-    {
-      title: contentWidget.title,
-      description: contentWidget.description,
-      mimeType: "text/html+skybridge",
-      _meta: {
-        "openai/widgetDescription": contentWidget.description,
-        "openai/widgetPrefersBorder": true,
+function resourceMeta(widget: WidgetDefinition) {
+  return {
+    ui: {
+      csp: {
+        connectDomains: [baseURL, baseURL.replace(/^http/, "ws")],
+        resourceDomains: [baseURL, "https://*.oaistatic.com"],
+        baseUriDomains: [baseURL],
       },
+      prefersBorder: widget.prefersBorder ?? false,
     },
-    async (uri) => ({
-      contents: [
-        {
-          uri: uri.href,
-          mimeType: "text/html+skybridge",
-          text: `<html>${contentWidget.html}</html>`,
-          _meta: {
-            "openai/widgetDescription": contentWidget.description,
-            "openai/widgetPrefersBorder": true,
-            "openai/widgetDomain": contentWidget.widgetDomain,
+    "openai/widgetDescription": widget.description,
+    "openai/widgetPrefersBorder": widget.prefersBorder ?? false,
+    "openai/widgetDomain": baseURL,
+    "openai/widgetCSP": {
+      connect_domains: [baseURL, baseURL.replace(/^http/, "ws")],
+      resource_domains: [baseURL, "https://*.oaistatic.com"],
+    },
+  } as const;
+}
+
+const sampleWidget: WidgetDefinition = {
+  id: "starter-widget",
+  title: "Apps SDK Starter Widget",
+  templateUri: "ui://widget/starter-widget.html",
+  chatGptTemplateUri: "ui://widget/starter-widget.skybridge.html",
+  path: "/",
+  invoking: "Preparing the starter widget",
+  invoked: "Starter widget ready",
+  description:
+    "Interactive starter widget showing tool output, widget state, display controls, and MCP bridge actions.",
+  prefersBorder: false,
+  widgetAccessible: true,
+};
+
+const handler = createMcpHandler(async (server) => {
+  server.registerResource(
+    sampleWidget.id,
+    sampleWidget.templateUri,
+    {
+      title: sampleWidget.title,
+      description: sampleWidget.description,
+      mimeType: MCP_APPS_MIME_TYPE,
+      _meta: resourceMeta(sampleWidget),
+    },
+    async (uri) => {
+      const html = await getAppsSdkCompatibleHtml(baseURL, sampleWidget.path);
+
+      return {
+        contents: [
+          {
+            uri: uri.href,
+            mimeType: MCP_APPS_MIME_TYPE,
+            text: html,
+            _meta: resourceMeta(sampleWidget),
           },
-        },
-      ],
-    })
+        ],
+      };
+    }
+  );
+
+  server.registerResource(
+    `${sampleWidget.id}-skybridge`,
+    sampleWidget.chatGptTemplateUri,
+    {
+      title: sampleWidget.title,
+      description: sampleWidget.description,
+      mimeType: CHATGPT_APPS_MIME_TYPE,
+      _meta: resourceMeta(sampleWidget),
+    },
+    async (uri) => {
+      const html = await getAppsSdkCompatibleHtml(baseURL, sampleWidget.path);
+
+      return {
+        contents: [
+          {
+            uri: uri.href,
+            mimeType: CHATGPT_APPS_MIME_TYPE,
+            text: html,
+            _meta: resourceMeta(sampleWidget),
+          },
+        ],
+      };
+    }
   );
 
   server.registerTool(
-    contentWidget.id,
+    "template_echo",
     {
-      title: contentWidget.title,
+      title: "Show starter widget",
       description:
-        "Fetch and display the homepage content with the name of the user",
+        "Render the starter widget with a personalized message and a selected example mode.",
       inputSchema: {
-        name: z.string().describe("The name of the user to display on the homepage"),
+        name: z
+          .string()
+          .default("Builder")
+          .describe("Name to display in the starter widget."),
+        mode: z
+          .enum(["overview", "hooks", "bridge"])
+          .default("overview")
+          .describe("Starter section to highlight in the widget."),
       },
-      _meta: widgetMeta(contentWidget),
+      _meta: toolMeta(sampleWidget),
+      annotations: {
+        destructiveHint: false,
+        openWorldHint: false,
+        readOnlyHint: true,
+      },
     },
-    async ({ name }) => {
+    async ({ name, mode }) => {
       return {
         content: [
           {
             type: "text",
-            text: name,
+            text: `Opened the Apps SDK starter widget for ${name}.`,
           },
         ],
         structuredContent: {
-          name: name,
+          name,
+          mode,
+          message:
+            "This structured content is available to the iframe through the Apps SDK bridge.",
           timestamp: new Date().toISOString(),
         },
-        _meta: widgetMeta(contentWidget),
+        _meta: toolMeta(sampleWidget),
+      };
+    }
+  );
+
+  server.registerTool(
+    "template_update_preferences",
+    {
+      title: "Update starter preferences",
+      description:
+        "Example widget-callable tool that returns updated starter preferences.",
+      inputSchema: {
+        density: z
+          .enum(["comfortable", "compact"])
+          .default("comfortable")
+          .describe("Preferred widget density."),
+        showBridgeHints: z
+          .boolean()
+          .default(true)
+          .describe("Whether to show MCP bridge hints in the widget."),
+      },
+      _meta: toolMeta(sampleWidget),
+      annotations: {
+        destructiveHint: false,
+        openWorldHint: false,
+        readOnlyHint: false,
+      },
+    },
+    async ({ density, showBridgeHints }) => {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Updated starter preferences to ${density}.`,
+          },
+        ],
+        structuredContent: {
+          preferences: {
+            density,
+            showBridgeHints,
+          },
+          updatedAt: new Date().toISOString(),
+        },
+        _meta: toolMeta(sampleWidget),
       };
     }
   );

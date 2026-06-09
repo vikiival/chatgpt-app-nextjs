@@ -3,6 +3,7 @@ export { useCallTool } from "./use-call-tool";
 export { useSendMessage } from "./use-send-message";
 export { useOpenExternal } from "./use-open-external";
 export { useRequestDisplayMode } from "./use-request-display-mode";
+export { useMcpBridge } from "./use-mcp-bridge";
 
 // OpenAI state hooks
 export { useDisplayMode } from "./use-display-mode";
@@ -16,4 +17,3 @@ export { useIsChatGptApp } from "./use-is-chatgpt-app";
 
 // Types
 export type * from "./types";
-

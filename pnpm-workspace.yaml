@@ -1,3 +1,6 @@
+overrides:
+  "mcp-handler>@modelcontextprotocol/sdk": 1.29.0
+
 allowBuilds:
   '@tailwindcss/oxide': set this to true or false
   sharp: true
