@@ -2,7 +2,7 @@
 
 A compact starter for building ChatGPT apps with Next.js, MCP tools, iframe widgets, and [`@openai/apps-sdk-ui`](https://github.com/openai/apps-sdk-ui).
 
-This template is intentionally generic. It does not include auth, database, billing, or product-specific integrations. It focuses on the reusable foundation every ChatGPT app needs:
+This template is intentionally generic. It does not include billing or product-specific integrations. It focuses on the reusable foundation every ChatGPT app needs:
 
 - A Next.js app that can render in a normal browser and inside ChatGPT.
 - An MCP endpoint at `/mcp`.
@@ -13,11 +13,15 @@ This template is intentionally generic. It does not include auth, database, bill
 - React hooks for `window.openai` host globals and actions.
 - A small JSON-RPC bridge helper for MCP Apps methods.
 - A sample widget built with `@openai/apps-sdk-ui`.
+- Better Auth OAuth for protecting the `/mcp` endpoint.
+- Drizzle + Postgres persistence for users, sessions, OAuth clients, and tokens.
 
 ## Quick Start
 
 ```bash
 pnpm install
+cp .env.example .env.local
+pnpm db:push
 pnpm dev
 ```
 
@@ -33,13 +37,18 @@ The MCP server is available at:
 http://localhost:3000/mcp
 ```
 
+Because `/mcp` is protected, unauthenticated requests return an OAuth challenge instead of a tool list.
+
 ## Scripts
 
 ```bash
 pnpm dev          # Start local Next.js development server
 pnpm run build   # Build the production app
 pnpm start       # Start the production server after building
-pnpm tsc --noEmit
+pnpm typecheck    # Type-check the project
+pnpm db:generate  # Generate SQL migrations from the Drizzle schema
+pnpm db:migrate   # Apply generated migrations
+pnpm db:push      # Push schema directly during local development
 ```
 
 ## Project Structure
@@ -53,10 +62,61 @@ app/
   layout.tsx                Root layout and iframe bootstrap
   mcp/route.ts              MCP server, widget resource, and tool registration
   page.tsx                  Main sample widget UI
+lib/auth/                   Better Auth server and browser client setup
+lib/db/                     Drizzle Postgres schema and database client
 baseUrl.ts                  App origin detection for local and Vercel deploys
+drizzle.config.ts           Drizzle migration configuration
 next.config.ts              Asset prefix for iframe-safe Next.js assets
 proxy.ts                    CORS headers for iframe/RSC requests
 ```
+
+## OAuth Setup
+
+The MCP endpoint is protected with Better Auth's MCP OAuth plugin. ChatGPT discovers the OAuth server through the `WWW-Authenticate` challenge returned by `/mcp`, then uses authorization code + PKCE against Better Auth endpoints under `/api/auth`.
+
+Create a `.env.local` file:
+
+```bash
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/chatgpt_apps_starter
+BETTER_AUTH_SECRET=replace-with-a-long-random-secret
+BETTER_AUTH_URL=http://localhost:3000/api/auth
+MCP_RESOURCE_URL=http://localhost:3000
+```
+
+Optional production settings:
+
+```bash
+APP_URL=https://your-app.example
+POSTGRES_SSL=true
+```
+
+Run the schema:
+
+```bash
+pnpm db:push
+```
+
+For production, prefer generated migrations:
+
+```bash
+pnpm db:generate
+pnpm db:migrate
+```
+
+Auth routes:
+
+```text
+/api/auth/[...all]                    Better Auth handler
+/api/auth/.well-known/oauth-authorization-server
+/api/auth/.well-known/oauth-protected-resource
+/api/auth/mcp/authorize
+/api/auth/mcp/token
+/api/auth/mcp/register
+/api/auth/mcp/jwks
+/login                                Email/password login page
+```
+
+This starter intentionally avoids Redis and passkeys. Better Auth stores the required OAuth applications, consents, access tokens, sessions, users, and JWKS keys in Postgres. The MCP tool metadata uses the standard OIDC scopes advertised by Better Auth: `openid`, `profile`, and `email`.
 
 ## Architecture
 

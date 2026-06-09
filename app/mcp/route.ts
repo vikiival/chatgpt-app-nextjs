@@ -1,9 +1,17 @@
 import { baseURL } from "@/baseUrl";
+import { auth } from "@/lib/auth";
+import { withMcpAuth } from "better-auth/plugins";
 import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
 
 const MCP_APPS_MIME_TYPE = "text/html;profile=mcp-app";
 const CHATGPT_APPS_MIME_TYPE = "text/html+skybridge";
+const OAUTH_SECURITY_SCHEMES = [
+  {
+    type: "oauth2",
+    scopes: ["openid", "profile", "email"],
+  },
+] as const;
 
 const getAppsSdkCompatibleHtml = async (baseUrl: string, path: string) => {
   const result = await fetch(`${baseUrl}${path}`);
@@ -28,6 +36,7 @@ type WidgetDefinition = {
 
 function toolMeta(widget: WidgetDefinition) {
   return {
+    securitySchemes: OAUTH_SECURITY_SCHEMES,
     ui: {
       resourceUri: widget.templateUri,
       visibility: ["model", "app"],
@@ -75,7 +84,7 @@ const sampleWidget: WidgetDefinition = {
   widgetAccessible: true,
 };
 
-const handler = createMcpHandler(async (server) => {
+const mcpHandler = createMcpHandler(async (server) => {
   server.registerResource(
     sampleWidget.id,
     sampleWidget.templateUri,
@@ -212,6 +221,8 @@ const handler = createMcpHandler(async (server) => {
     }
   );
 });
+
+const handler = withMcpAuth(auth, async (request) => mcpHandler(request));
 
 export const GET = handler;
 export const POST = handler;
