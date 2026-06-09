@@ -49,7 +49,6 @@ function resourceMeta(widget: WidgetDefinition) {
         resourceDomains: [baseURL, "https://*.oaistatic.com"],
         baseUriDomains: [baseURL],
       },
-      domain: baseURL,
       prefersBorder: widget.prefersBorder ?? false,
     },
     "openai/widgetDescription": widget.description,

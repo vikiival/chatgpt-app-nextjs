@@ -103,6 +103,8 @@ _meta: {
 
 The template keeps the deprecated flat `ui/resourceUri` value as a migration aid, but new hosts should use `_meta.ui.resourceUri`.
 
+The MCP Apps `ui.domain` field is intentionally omitted. Hosts such as Claude assign their own sandbox content domain, and they can reject arbitrary app domains in this field. The app origin belongs in CSP allowlists and, for ChatGPT compatibility, in `openai/widgetDomain`.
+
 ## ChatGPT Apps SDK Compatibility
 
 ChatGPT Apps SDK compatibility is kept through a parallel Skybridge resource:
