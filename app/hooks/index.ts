@@ -1,4 +1,8 @@
-// OpenAI API hooks
+// Host bridge (ChatGPT skybridge + standards-based MCP Apps hosts)
+export { HostProvider, useHost } from "./host-provider";
+export type { HostBridge, HostFlavor } from "./host-provider";
+
+// Host API hooks
 export { useCallTool } from "./use-call-tool";
 export { useSendMessage } from "./use-send-message";
 export { useOpenExternal } from "./use-open-external";

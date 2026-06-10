@@ -22,7 +22,7 @@ import {
   useMaxHeight,
   useDisplayMode,
   useRequestDisplayMode,
-  useIsChatGptApp,
+  useHost,
   useSendMessage,
   useOpenExternal,
   useWidgetState,
@@ -61,7 +61,7 @@ export default function Home() {
   const maxHeight = useMaxHeight() ?? undefined;
   const displayMode = useDisplayMode();
   const requestDisplayMode = useRequestDisplayMode();
-  const isChatGptApp = useIsChatGptApp();
+  const { flavor } = useHost();
   const sendMessage = useSendMessage();
   const openExternal = useOpenExternal();
   const callTool = useCallTool();
@@ -81,10 +81,17 @@ export default function Home() {
     () => [
       ["MCP endpoint", "/mcp"],
       ["Widget resource", "ui://widget/starter-widget.html"],
-      ["MIME type", "text/html+skybridge"],
+      [
+        "Host bridge",
+        flavor === "chatgpt"
+          ? "window.openai (skybridge)"
+          : flavor === "mcp-app"
+            ? "MCP Apps (ui/* bridge)"
+            : flavor,
+      ],
       ["Display mode", displayMode ?? "outside host"],
     ],
-    [displayMode]
+    [displayMode, flavor]
   );
 
   async function handlePreviewToolCall() {
@@ -92,7 +99,7 @@ export default function Home() {
       density: "compact",
       showBridgeHints: true,
     });
-    setLastAction(result ? "window.openai.callTool returned" : "Tool bridge unavailable outside ChatGPT");
+    setLastAction(result ? "Tool call returned" : "Tool bridge unavailable outside a host");
   }
 
   async function handleBridgeContext() {
@@ -127,11 +134,11 @@ export default function Home() {
         </Button>
       )}
       <main className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
-        {!isChatGptApp && (
+        {flavor === "standalone" && (
           <Alert
             color="info"
-            title="Running outside ChatGPT"
-            description="The UI renders normally, and bridge actions will report graceful fallback states."
+            title="Running outside a host"
+            description="The UI renders normally in the browser. Inside ChatGPT or an MCP Apps host (Claude, Goose, ...), bridge actions become live."
           />
         )}
 
@@ -246,8 +253,8 @@ export default function Home() {
               Widget state
             </h2>
             <p className="text-sm leading-6 text-[var(--color-text-secondary)]">
-              This note is stored through `window.openai.setWidgetState` when the
-              host bridge is available.
+              This note is stored through `window.openai.setWidgetState` in
+              ChatGPT, or kept locally in other hosts.
             </p>
             <textarea
               className="min-h-32 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-sm outline-none focus:border-[var(--color-accent)]"

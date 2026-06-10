@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { baseURL } from "@/baseUrl";
 import { AppsSDKUIProvider } from "./apps-sdk-ui-provider";
+import { HostProvider } from "./hooks/host-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,7 +34,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning
       >
-        <AppsSDKUIProvider>{children}</AppsSDKUIProvider>
+        <HostProvider>
+          <AppsSDKUIProvider>{children}</AppsSDKUIProvider>
+        </HostProvider>
       </body>
     </html>
   );
