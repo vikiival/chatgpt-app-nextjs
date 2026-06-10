@@ -10,8 +10,12 @@ This template is intentionally generic. It does not include auth, database, bill
 - Widget resources served as `text/html;profile=mcp-app` for MCP Apps hosts.
 - A parallel `text/html+skybridge` resource for ChatGPT Apps SDK compatibility.
 - MCP Apps metadata plus OpenAI Apps SDK compatibility metadata.
-- React hooks for `window.openai` host globals and actions.
-- A small JSON-RPC bridge helper for MCP Apps methods.
+- A unified host bridge (`HostProvider`) that auto-detects ChatGPT's skybridge
+  (`window.openai`) or a standards-based MCP Apps host (via
+  [`@modelcontextprotocol/ext-apps`](https://github.com/modelcontextprotocol/ext-apps)
+  and the `ui/*` postMessage protocol).
+- React hooks that work identically in ChatGPT, MCP Apps hosts (Claude, Goose,
+  VS Code, ...), and a plain browser.
 - A sample widget built with `@openai/apps-sdk-ui`.
 
 ## Quick Start
@@ -102,6 +106,22 @@ _meta: {
 ```
 
 The template keeps the deprecated flat `ui/resourceUri` value as a migration aid, but new hosts should use `_meta.ui.resourceUri`.
+
+### Client-side host bridge
+
+`app/hooks/host-provider.tsx` makes the widget work in every host. On mount it
+detects the environment:
+
+- `window.openai` exists → ChatGPT skybridge; hooks read `window.openai`.
+- Embedded in an iframe without `window.openai` → it connects through the
+  official `@modelcontextprotocol/ext-apps` `App` class: the `ui/initialize`
+  handshake, `ui/notifications/tool-input` / `tool-result` data push,
+  host-context updates (theme, display mode, dimensions), and automatic
+  `ui/notifications/size-changed` reporting.
+- Otherwise → standalone browser mode with graceful fallbacks.
+
+The host theme is mirrored onto `<html data-theme>` in both host types, and
+`useHost()` exposes the detected flavor plus the raw `App` instance.
 
 The MCP Apps `ui.domain` field is intentionally omitted. Hosts such as Claude assign their own sandbox content domain, and they can reject arbitrary app domains in this field. The app origin belongs in CSP allowlists and, for ChatGPT compatibility, in `openai/widgetDomain`.
 
@@ -316,16 +336,18 @@ It uses `window.openai.openExternal` when available so ChatGPT can handle extern
 
 The template exposes hooks from `app/hooks`.
 
-Common hooks:
+Common hooks (all host-aware — they use `window.openai` in ChatGPT and the
+MCP Apps `ui/*` bridge elsewhere):
 
+- `useHost` exposes the detected host flavor, pushed tool data, host context, and the raw ext-apps `App`.
 - `useWidgetProps` reads tool `structuredContent` from the host.
-- `useWidgetState` reads and writes host-persisted widget state.
+- `useWidgetState` reads and writes host-persisted widget state (ChatGPT only; local elsewhere).
 - `useDisplayMode` reads whether the widget is inline, fullscreen, or PiP.
 - `useRequestDisplayMode` asks the host to change display mode.
-- `useCallTool` calls MCP tools from the widget through `window.openai.callTool`.
-- `useSendMessage` sends follow-up messages into the ChatGPT conversation.
-- `useOpenExternal` opens external URLs through the ChatGPT host.
-- `useMcpBridge` sends JSON-RPC bridge requests for MCP Apps methods.
+- `useCallTool` calls MCP tools from the widget.
+- `useSendMessage` sends follow-up messages into the conversation.
+- `useOpenExternal` opens external URLs through the host.
+- `useMcpBridge` exposes raw MCP Apps methods such as `ui/update-model-context`.
 
 ## Iframe Bootstrap
 

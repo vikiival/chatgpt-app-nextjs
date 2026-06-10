@@ -8,6 +8,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@modelcontextprotocol/ext-apps": "^1.7.4",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@openai/apps-sdk-ui": "^0.2.2",
     "mcp-handler": "^1.1.0",
