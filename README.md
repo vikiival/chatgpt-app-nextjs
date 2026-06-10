@@ -88,7 +88,11 @@ Optional production settings:
 ```bash
 APP_URL=https://your-app.example
 POSTGRES_SSL=true
+RESEND_API_KEY=re_...
+AUTH_EMAIL_FROM=ChatGPT Apps Starter <auth@your-app.example>
 ```
+
+Magic links are sent with Resend when `RESEND_API_KEY` is configured. Without it, the sign-in URL is printed to the server console for local development.
 
 Run the schema:
 
@@ -115,10 +119,10 @@ Auth routes:
 /api/auth/mcp/token
 /api/auth/mcp/register
 /api/auth/mcp/jwks
-/login                                Email/password login page
+/login                                Magic link login page
 ```
 
-This starter intentionally avoids Redis and passkeys. Better Auth stores the required OAuth applications, consents, access tokens, sessions, users, and JWKS keys in Postgres. The MCP tool metadata uses the standard OIDC scopes advertised by Better Auth: `openid`, `profile`, and `email`.
+This starter intentionally avoids Redis, passwords, and passkeys. Better Auth stores the required OAuth applications, consents, access tokens, sessions, users, magic link tokens, and JWKS keys in Postgres. The MCP tool metadata uses the standard OIDC scopes advertised by Better Auth: `openid`, `profile`, and `email`.
 
 ## Architecture
 

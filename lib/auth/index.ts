@@ -2,7 +2,8 @@ import { baseURL as appBaseURL } from "@/baseUrl";
 import { db } from "@/lib/db";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { betterAuth } from "better-auth";
-import { jwt, mcp } from "better-auth/plugins";
+import { jwt, magicLink, mcp } from "better-auth/plugins";
+import { sendMagicLinkEmail } from "./magic-link-email";
 
 const stripTrailingSlash = (value: string) =>
   value.endsWith("/") ? value.slice(0, -1) : value;
@@ -51,11 +52,6 @@ export const auth = betterAuth({
   baseURL: authBaseURL,
   secret: authSecret,
   trustedOrigins: [appOrigin, "https://chatgpt.com", "https://chat.openai.com"],
-  emailAndPassword: {
-    enabled: true,
-    autoSignIn: true,
-    minPasswordLength: 8,
-  },
   session: {
     expiresIn: 60 * 60 * 24 * 30,
     updateAge: 60 * 60 * 24,
@@ -72,6 +68,13 @@ export const auth = betterAuth({
         keyPairConfig: {
           alg: "RS256",
         },
+      },
+    }),
+    magicLink({
+      expiresIn: 60 * 10,
+      storeToken: "hashed",
+      sendMagicLink: async ({ email, url }) => {
+        await sendMagicLinkEmail({ email, url });
       },
     }),
     mcp({
