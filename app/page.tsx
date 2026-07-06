@@ -156,7 +156,7 @@ export default function Home() {
           </div>
           <div className="max-w-3xl">
             <h1 className="text-3xl font-semibold tracking-normal sm:text-4xl">
-              ChatGPT Apps SDK Next.js Starter
+              ChatGPT WORKS!
             </h1>
             <p className="mt-3 text-base leading-7 text-[var(--color-text-secondary)]">
               A compact template for MCP tools, iframe widgets, structured
@@ -299,7 +299,7 @@ export default function Home() {
               openExternal("https://developers.openai.com/apps-sdk")
             }
           >
-            Open docs
+            Something external
             <ArrowUpRight aria-hidden />
           </Button>
         </footer>
