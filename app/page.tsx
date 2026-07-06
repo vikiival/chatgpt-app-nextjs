@@ -80,7 +80,7 @@ export default function Home() {
   const rows = useMemo(
     () => [
       ["MCP endpoint", "/mcp"],
-      ["Widget resource", "ui://widget/starter-widget.html"],
+      ["Widget resource", "ui://widget/starter-widget.v1.html"],
       [
         "Host bridge",
         flavor === "chatgpt"

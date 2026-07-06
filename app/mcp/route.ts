@@ -64,8 +64,8 @@ function resourceMeta(widget: WidgetDefinition) {
 const sampleWidget: WidgetDefinition = {
   id: "starter-widget",
   title: "Apps SDK Starter Widget",
-  templateUri: "ui://widget/starter-widget.html",
-  chatGptTemplateUri: "ui://widget/starter-widget.skybridge.html",
+  templateUri: "ui://widget/starter-widget.v1.html",
+  chatGptTemplateUri: "ui://widget/starter-widget.v1.skybridge.html",
   path: "/",
   invoking: "Preparing the starter widget",
   invoked: "Starter widget ready",
