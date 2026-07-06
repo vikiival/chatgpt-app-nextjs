@@ -103,6 +103,11 @@ function NextChatSDKBootstrap({ baseUrl }: { baseUrl: string }) {
                   url.origin != appOrigin
                 ) {
                   try {
+                    // Route external links through the host bridge so they open
+                    // in the host's browser instead of navigating the iframe.
+                    // ChatGPT: window.openai.openExternal. MCP Apps: the
+                    // connected App's openLink, exposed by HostProvider as
+                    // window.__mcpOpenLink.
                     if (
                       window.openai &&
                       "openExternal" in window.openai &&
@@ -110,10 +115,13 @@ function NextChatSDKBootstrap({ baseUrl }: { baseUrl: string }) {
                     ) {
                       window.openai.openExternal({ href: a.href });
                       e.preventDefault();
+                    } else if (typeof window.__mcpOpenLink === "function") {
+                      window.__mcpOpenLink(a.href);
+                      e.preventDefault();
                     }
                   } catch {
                     console.warn(
-                      "openExternal failed, likely not in OpenAI client"
+                      "openExternal failed, likely not in a host client"
                     );
                   }
                 }
@@ -132,32 +140,34 @@ function NextChatSDKBootstrap({ baseUrl }: { baseUrl: string }) {
                   url = new URL(input.url, window.location.href);
                 }
 
-                if (url.origin === appOrigin) {
+                const rewrite = () => {
                   if (typeof input === "string" || input instanceof URL) {
                     input = url.toString();
                   } else {
                     input = new Request(url.toString(), input);
                   }
+                };
 
-                  return originalFetch.call(window, input, {
-                    ...init,
-                    mode: "cors",
-                  });
-                }
-
-                if (url.origin === window.location.origin) {
+                if (url.origin === appOrigin) {
+                  // Already targeting the app origin — rewrite the input value
+                  // so a relative Request resolves against the right base.
+                  rewrite();
+                } else if (url.origin === window.location.origin) {
+                  // Same-origin (host origin) request — rewrite it back to the
+                  // app origin so it hits the deployed assets/routes.
                   const newUrl = new URL(baseUrl);
                   newUrl.pathname = url.pathname;
                   newUrl.search = url.search;
                   newUrl.hash = url.hash;
                   url = newUrl;
+                  rewrite();
+                }
 
-                  if (typeof input === "string" || input instanceof URL) {
-                    input = url.toString();
-                  } else {
-                    input = new Request(url.toString(), input);
-                  }
-
+                // Only force CORS when the (possibly rewritten) target is
+                // actually cross-origin. Forcing mode:"cors" unconditionally can
+                // break no-cors or credentialed same-origin requests, so pass
+                // init through untouched otherwise.
+                if (url.origin !== window.location.origin) {
                   return originalFetch.call(window, input, {
                     ...init,
                     mode: "cors",

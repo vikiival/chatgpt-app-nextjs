@@ -120,10 +120,15 @@ detects the environment:
   `ui/notifications/size-changed` reporting.
 - Otherwise → standalone browser mode with graceful fallbacks.
 
-The host theme is mirrored onto `<html data-theme>` in both host types, and
+On MCP Apps hosts the host theme, style variables (`--color-*`, radius, shadow),
+and fonts are applied through the SDK helpers `applyDocumentTheme`,
+`applyHostStyleVariables`, and `applyHostFonts` on connect and on every
+`hostcontextchanged`. On ChatGPT the theme is mirrored onto `<html data-theme>`.
 `useHost()` exposes the detected flavor plus the raw `App` instance.
 
-The MCP Apps `ui.domain` field is intentionally omitted. Hosts such as Claude assign their own sandbox content domain, and they can reject arbitrary app domains in this field. The app origin belongs in CSP allowlists and, for ChatGPT compatibility, in `openai/widgetDomain`.
+The MCP Apps `ui.domain` field is intentionally omitted. Hosts such as Claude assign their own sandbox content domain, and they can reject arbitrary app domains in this field. The app origin belongs in CSP allowlists and, for ChatGPT compatibility, in `openai/widgetDomain`. Opting in later is a one-line change: add `domain: baseURL` to `resourceMeta()`'s `ui` object in `app/mcp/route.ts`.
+
+The template registers both the MCP Apps and the ChatGPT Skybridge resource unconditionally, by design, so it works across hosts without per-session negotiation. The SDK's `getUiCapability()` (which would let the server gate registration on the connecting host's advertised UI capability at `oninitialized`) is deliberately not used: `mcp-handler` exposes no clean per-session hook for it, and unconditional dual registration is the intended behavior here.
 
 ## ChatGPT Apps SDK Compatibility
 
@@ -201,6 +206,12 @@ Output:
 ```
 
 The sample UI calls this from the **Call sample tool** button.
+
+Because it is meant to be called by the widget rather than the model, its
+registration sets `_meta.ui.visibility: ["app"]` while keeping
+`openai/widgetAccessible: true`. On MCP Apps hosts this hides the tool from the
+model but still lets the widget call it. ChatGPT has no equivalent model-hide
+metadata key, so the tool stays model-visible there.
 
 ## UI Kit Setup
 
@@ -344,10 +355,13 @@ MCP Apps `ui/*` bridge elsewhere):
 - `useWidgetState` reads and writes host-persisted widget state (ChatGPT only; local elsewhere).
 - `useDisplayMode` reads whether the widget is inline, fullscreen, or PiP.
 - `useRequestDisplayMode` asks the host to change display mode.
-- `useCallTool` calls MCP tools from the widget.
+- `useCallTool` calls MCP tools from the widget. Tool names, arguments, and the returned `structuredContent` are typed from the tool map in `app/hooks/types.ts` (kept in sync with the zod schemas in `app/mcp/route.ts`).
 - `useSendMessage` sends follow-up messages into the conversation.
 - `useOpenExternal` opens external URLs through the host.
 - `useMcpBridge` exposes raw MCP Apps methods such as `ui/update-model-context`.
+- `useMaxHeight` reads the max height available to the widget (`window.openai.maxHeight` in ChatGPT, `hostContext.containerDimensions` in MCP Apps hosts).
+- `useSafeArea` reads the host safe-area insets (`window.openai.safeArea` / `hostContext.safeAreaInsets`) and mirrors them onto `--safe-area-inset-*` CSS variables.
+- `useIsChatGptApp` reports whether the widget is running in the ChatGPT skybridge sandbox. It is derived from `useHost().flavor`, so it stays in sync as the host flavor resolves.
 
 ## Iframe Bootstrap
 

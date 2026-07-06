@@ -1,19 +1,12 @@
-import { useSyncExternalStore } from "react";
+import { useHost } from "./host-provider";
 
+/**
+ * Whether the widget is running inside the ChatGPT Apps SDK (skybridge) sandbox.
+ *
+ * Derived from the unified host bridge so it stays in sync with the detected
+ * flavor. (The previous `useSyncExternalStore` implementation subscribed with a
+ * permanent no-op and never updated after mount.)
+ */
 export function useIsChatGptApp(): boolean {
-  return useSyncExternalStore(
-    () => {
-      // No subscription needed for this static value
-      return () => {};
-    },
-    () => {
-      // Client snapshot - check the actual window value
-      if (typeof window === "undefined") return false;
-      return (window as any).__isChatGptApp ?? false;
-    },
-    () => {
-      // Server snapshot - always false since window is undefined on server
-      return false;
-    }
-  );
+  return useHost().flavor === "chatgpt";
 }

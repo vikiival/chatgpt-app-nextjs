@@ -17,7 +17,11 @@ export { useOpenAIGlobal } from "./use-openai-global";
 
 // Additional hooks
 export { useMaxHeight } from "./use-max-height";
+export { useSafeArea } from "./use-safe-area";
 export { useIsChatGptApp } from "./use-is-chatgpt-app";
+
+// Teardown registry (for hosts that unmount the widget)
+export { registerTeardownCallback } from "./host-provider";
 
 // Types
 export type * from "./types";

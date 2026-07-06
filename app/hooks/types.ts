@@ -85,6 +85,52 @@ export type CallTool = (
   args: Record<string, unknown>
 ) => Promise<CallToolResponse>;
 
+/**
+ * Hand-maintained map of the MCP tools registered in `app/mcp/route.ts`, kept
+ * in sync with the zod input/output schemas there.
+ *
+ * mcp-handler's `createMcpHandler` returns a plain `(request) => Promise<Response>`
+ * and does not surface tool name/schema info in its type (`AppType` from
+ * route.ts is that opaque function type), so this map is the source of truth for
+ * typing `useCallTool` — tool names are constrained to a union and args /
+ * structuredContent are inferred from here.
+ */
+export type ToolMap = {
+  template_echo: {
+    args: {
+      name?: string;
+      mode?: "overview" | "hooks" | "bridge";
+    };
+    structuredContent: {
+      name: string;
+      mode: "overview" | "hooks" | "bridge";
+      message: string;
+      timestamp: string;
+    };
+  };
+  template_update_preferences: {
+    args: {
+      density?: "comfortable" | "compact";
+      showBridgeHints?: boolean;
+    };
+    structuredContent: {
+      preferences: {
+        density: "comfortable" | "compact";
+        showBridgeHints: boolean;
+      };
+      updatedAt: string;
+    };
+  };
+};
+
+/** A `CallToolResponse` with `structuredContent` narrowed to a tool's output shape. */
+export type TypedCallToolResponse<S extends UnknownObject> = Omit<
+  CallToolResponse,
+  "structuredContent"
+> & {
+  structuredContent?: S;
+};
+
 /** Extra events */
 export const SET_GLOBALS_EVENT_TYPE = "openai:set_globals";
 export class SetGlobalsEvent extends CustomEvent<{
@@ -100,6 +146,12 @@ declare global {
   interface Window {
     openai: API & OpenAIGlobals;
     innerBaseUrl: string;
+    /**
+     * Set by `HostProvider` once the MCP Apps `App` connects, so the
+     * `layout.tsx` bootstrap click interceptor can route cross-origin links
+     * through the host bridge (`ui/open-link`) instead of navigating the iframe.
+     */
+    __mcpOpenLink?: (href: string) => void;
   }
 
   interface WindowEventMap {

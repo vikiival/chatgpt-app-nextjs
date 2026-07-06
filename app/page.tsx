@@ -28,6 +28,7 @@ import {
   useWidgetState,
   useMcpBridge,
 } from "./hooks";
+import { ErrorBoundary } from "./components/shared/error-boundary";
 
 type StarterOutput = {
   name?: string;
@@ -51,7 +52,7 @@ const modeOptions = [
   { value: "bridge", label: "Bridge" },
 ] as const;
 
-export default function Home() {
+function HomeContent() {
   const toolOutput = useWidgetProps<StarterOutput>({
     name: "Builder",
     mode: "overview",
@@ -95,11 +96,19 @@ export default function Home() {
   );
 
   async function handlePreviewToolCall() {
-    const result = await callTool("template_update_preferences", {
-      density: "compact",
-      showBridgeHints: true,
-    });
-    setLastAction(result ? "Tool call returned" : "Tool bridge unavailable outside a host");
+    try {
+      const result = await callTool("template_update_preferences", {
+        density: "compact",
+        showBridgeHints: true,
+      });
+      setLastAction(
+        result ? "Tool call returned" : "Tool bridge unavailable outside a host"
+      );
+    } catch (error) {
+      setLastAction(
+        error instanceof Error ? error.message : "Tool call failed"
+      );
+    }
   }
 
   async function handleBridgeContext() {
@@ -111,6 +120,25 @@ export default function Home() {
     } catch (error) {
       setLastAction(error instanceof Error ? error.message : "Bridge unavailable");
     }
+  }
+
+  // Show a lightweight skeleton while the MCP Apps handshake is in flight,
+  // instead of flashing the fully-resolved (but data-less) UI.
+  if (flavor === "detecting") {
+    return (
+      <div
+        className="min-h-screen bg-[var(--color-surface)] text-[var(--color-text)]"
+        style={{ maxHeight }}
+        aria-busy="true"
+        aria-live="polite"
+      >
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 py-6 sm:px-6 lg:px-8">
+          <div className="h-8 w-2/3 animate-pulse rounded-md bg-[var(--color-surface-secondary)]" />
+          <div className="h-4 w-full animate-pulse rounded-md bg-[var(--color-surface-secondary)]" />
+          <div className="h-40 w-full animate-pulse rounded-lg bg-[var(--color-surface-secondary)]" />
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -305,5 +333,13 @@ export default function Home() {
         </footer>
       </main>
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <ErrorBoundary>
+      <HomeContent />
+    </ErrorBoundary>
   );
 }

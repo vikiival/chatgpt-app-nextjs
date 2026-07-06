@@ -28,9 +28,17 @@ export function useMaxHeight(): number | null {
     return openaiMaxHeight;
   }
 
-  const dimensions = hostContext?.containerDimensions as
-    | { height?: number; maxHeight?: number }
-    | undefined;
+  // Typed via the SDK's McpUiHostContext["containerDimensions"] union
+  // (either a fixed `height` or an optional `maxHeight`).
+  const dimensions = hostContext?.containerDimensions;
+  if (dimensions) {
+    if ("height" in dimensions) {
+      return dimensions.height;
+    }
+    if ("maxHeight" in dimensions && dimensions.maxHeight != null) {
+      return dimensions.maxHeight;
+    }
+  }
 
-  return dimensions?.height ?? dimensions?.maxHeight ?? null;
+  return null;
 }

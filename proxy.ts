@@ -22,5 +22,17 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: "/:path*",
+  // Scope CORS to the routes a cross-origin host/iframe actually hits, instead
+  // of wildcarding every route:
+  matcher: [
+    // MCP JSON-RPC endpoint — hosts POST here from a different origin.
+    "/mcp/:path*",
+    // Next.js assets — the widget iframe runs on the host origin and the
+    // layout.tsx fetch monkey-patch re-requests these from the app origin with
+    // mode: "cors".
+    "/_next/:path*",
+    // Widget pages served into the host iframe.
+    "/",
+    "/custom-page/:path*",
+  ],
 };
